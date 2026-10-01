@@ -1,0 +1,178 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+function freedom_ignite_setup(): void {
+    add_theme_support('title-tag');
+    add_theme_support('post-thumbnails');
+    add_theme_support('responsive-embeds');
+    add_theme_support('align-wide');
+    add_theme_support('editor-styles');
+    add_editor_style('style.css');
+    add_theme_support(
+        'html5',
+        array(
+            'comment-form',
+            'comment-list',
+            'gallery',
+            'caption',
+            'style',
+            'script',
+            'navigation-widgets',
+        )
+    );
+    add_theme_support(
+        'custom-logo',
+        array(
+            'height' => 80,
+            'width' => 200,
+            'flex-height' => true,
+            'flex-width' => true,
+            'unlink-homepage-logo' => false,
+        )
+    );
+
+    register_nav_menus(
+        array(
+            'primary' => __('Primary Menu', 'freedom-ignite'),
+            'footer' => __('Footer Menu', 'freedom-ignite'),
+        )
+    );
+}
+add_action('after_setup_theme', 'freedom_ignite_setup');
+
+function freedom_ignite_enqueue_assets(): void {
+    $theme_version = wp_get_theme()->get('Version');
+
+    wp_enqueue_style('freedom-ignite-style', get_stylesheet_uri(), array(), $theme_version);
+    wp_enqueue_script('freedom-ignite-theme', get_template_directory_uri() . '/assets/js/theme.js', array(), $theme_version, true);
+}
+add_action('wp_enqueue_scripts', 'freedom_ignite_enqueue_assets');
+
+function freedom_ignite_handle_contact_form(): void {
+    if (!isset($_POST['freedom_contact_submit'])) {
+        return;
+    }
+
+    if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'freedom_contact')) {
+        wp_safe_redirect(add_query_arg('contact_error', 'nonce', home_url('/')));
+        exit;
+    }
+
+    $name = sanitize_text_field(wp_unslash($_POST['name'] ?? ''));
+    $email = sanitize_email(wp_unslash($_POST['email'] ?? ''));
+    $phone = sanitize_text_field(wp_unslash($_POST['phone'] ?? ''));
+    $organization = sanitize_text_field(wp_unslash($_POST['organization'] ?? ''));
+    $interest = sanitize_text_field(wp_unslash($_POST['interest'] ?? ''));
+    $message = sanitize_textarea_field(wp_unslash($_POST['message'] ?? ''));
+
+    if (empty($name) || empty($email) || empty($message)) {
+        wp_safe_redirect(add_query_arg('contact_error', 'missing', home_url('/')));
+        exit;
+    }
+
+    $to = get_option('admin_email');
+    $subject = sprintf(__('New event inquiry from %s', 'freedom-ignite'), $name);
+    $body = "Name: $name\nEmail: $email\nPhone: $phone\nOrganization: $organization\nInquiry Type: $interest\n\nMessage:\n$message";
+    $headers = array('Content-Type: text/plain; charset=UTF-8', 'Reply-To: ' . $email);
+
+    $success = wp_mail($to, $subject, $body, $headers);
+
+    if ($success) {
+        wp_safe_redirect(add_query_arg('contact_success', '1', home_url('/')));
+    } else {
+        wp_safe_redirect(add_query_arg('contact_error', 'mail', home_url('/')));
+    }
+    exit;
+}
+add_action('init', 'freedom_ignite_handle_contact_form');
+
+function freedom_ignite_register_patterns(): void {
+    if (function_exists('register_block_pattern')) {
+        register_block_pattern(
+            'freedom-ignite/hero',
+            array(
+                'title' => __('Hero — Homepage', 'freedom-ignite'),
+                'content' => '<!-- wp:cover {"url":"https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1600&q=80","id":null,"dimRatio":65,"minHeight":700,"align":"full"} -->\n<div class="wp-block-cover alignfull" style="min-height:700px"><span aria-hidden="true" class="wp-block-cover__background has-background-dim-60 has-background-dim" style="background-color:#000000"></span><img class="wp-block-cover__image-background" alt="" src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=1600&q=80" data-object-fit="cover"/><div class="wp-block-cover__inner-container"><!-- wp:heading {"level":1,"style":{"typography":{"fontSize":"clamp(2.8rem,5vw,5.25rem)","letterSpacing":"-0.05em","lineHeight":"0.94"}}} -->\n<h1>Ignite Your Community</h1>\n<!-- /wp:heading -->\n<!-- wp:paragraph -->\n<p>Experience a premium event built around family, patriotism, entertainment, and meaningful action.</p>\n<!-- /wp:paragraph -->\n<!-- wp:buttons -->\n<div class="wp-block-buttons"><!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button">Get Tickets</a></div>\n<!-- /wp:button --><!-- wp:button {"className":"is-style-outline"} -->\n<div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button">Learn More</a></div>\n<!-- /wp:button --></div>\n<!-- /wp:buttons --></div></div>\n<!-- /wp:cover -->',
+            )
+        );
+
+        register_block_pattern(
+            'freedom-ignite/mission-cards',
+            array(
+                'title' => __('Mission Cards', 'freedom-ignite'),
+                'content' => '<!-- wp:group -->\n<div class="wp-block-group"><!-- wp:columns -->\n<div class="wp-block-columns"><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:group {"className":"mission-card"} -->\n<div class="wp-block-group mission-card"><!-- wp:heading {"level":3} -->\n<h3>Support Service</h3>\n<!-- /wp:heading --><!-- wp:paragraph -->\n<p>Deliver meaningful opportunities for people to connect, celebrate, and contribute.</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group --></div>\n<!-- /wp:column --><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:group {"className":"mission-card"} -->\n<div class="wp-block-group mission-card"><!-- wp:heading {"level":3} -->\n<h3>Build Community</h3>\n<!-- /wp:heading --><!-- wp:paragraph -->\n<p>Bring local businesses, supporters, and families together under one shared mission.</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group --></div>\n<!-- /wp:column --><!-- wp:column -->\n<div class="wp-block-column"><!-- wp:group {"className":"mission-card"} -->\n<div class="wp-block-group mission-card"><!-- wp:heading {"level":3} -->\n<h3>Create Impact</h3>\n<!-- /wp:heading --><!-- wp:paragraph -->\n<p>Turn attention into action with a premium experience that inspires generosity.</p>\n<!-- /wp:paragraph --></div>\n<!-- /wp:group --></div>\n<!-- /wp:column --></div>\n<!-- /wp:columns --></div>\n<!-- /wp:group -->',
+            )
+        );
+    }
+}
+add_action('init', 'freedom_ignite_register_patterns');
+
+function freedom_ignite_comment_form_defaults($args): array {
+    $args['class_submit'] = 'button';
+    return $args;
+}
+add_filter('comment_form_defaults', 'freedom_ignite_comment_form_defaults');
+
+function freedom_ignite_body_classes($classes): array {
+    $classes[] = 'theme-freedom-ignite';
+    return $classes;
+}
+add_filter('body_class', 'freedom_ignite_body_classes');
+
+function freedom_ignite_nav_menu_items($items, $args): string {
+    if ('primary' !== $args->theme_location) {
+        return $items;
+    }
+
+    return $items;
+}
+add_filter('wp_nav_menu_items', 'freedom_ignite_nav_menu_items', 10, 2);
+
+function freedom_ignite_customizer($wp_customize): void {
+    $wp_customize->add_section(
+        'freedom_ignite_theme_options',
+        array(
+            'title' => __('Theme Options', 'freedom-ignite'),
+            'priority' => 30,
+        )
+    );
+
+    $wp_customize->add_setting('freedom_ignite_header_cta_text', array('default' => 'Get Tickets'));
+    $wp_customize->add_control('freedom_ignite_header_cta_text', array(
+        'label' => __('Header CTA', 'freedom-ignite'),
+        'section' => 'freedom_ignite_theme_options',
+        'type' => 'text',
+    ));
+
+    $wp_customize->add_setting('freedom_ignite_header_cta_url', array('default' => '#registration'));
+    $wp_customize->add_control('freedom_ignite_header_cta_url', array(
+        'label' => __('Header CTA URL', 'freedom-ignite'),
+        'section' => 'freedom_ignite_theme_options',
+        'type' => 'url',
+    ));
+}
+add_action('customize_register', 'freedom_ignite_customizer');
+
+function freedom_ignite_get_header_cta(): string {
+    $cta_text = get_theme_mod('freedom_ignite_header_cta_text', 'Get Tickets');
+    $cta_url = get_theme_mod('freedom_ignite_header_cta_url', '#registration');
+    return '<a class="button" href="' . esc_url($cta_url) . '">' . esc_html($cta_text) . '</a>';
+}
+
+function freedom_ignite_get_hero_tagline(): string {
+    return __('Event / Community / Cause', 'freedom-ignite');
+}
+
+function freedom_ignite_get_intro_text(): string {
+    return __('We build unforgettable experiences that connect people, celebrate purpose, and inspire action.', 'freedom-ignite');
+}
+
+function freedom_ignite_excerpt($content, $max_chars = 140): string {
+    $clean = wp_strip_all_tags($content);
+    if (mb_strlen($clean) <= $max_chars) {
+        return $clean;
+    }
+    return trim(mb_substr($clean, 0, $max_chars)) . '...';
+}
